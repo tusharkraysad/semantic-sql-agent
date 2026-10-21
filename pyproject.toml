@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "semantic-sql-agent"
+version = "0.1.0"
+description = "A governed semantic layer between plain-English questions and SQL, run by a LangGraph agent."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+  "polars>=1.30,<3",
+  "fastexcel>=0.12",
+  "pyyaml>=6.0",
+  "sqlglot>=25",
+  "pydantic>=2.7",
+  "numpy>=1.26",
+  "rapidfuzz>=3.6",
+  "langgraph>=0.4",
+  "langgraph-checkpoint-sqlite>=2.0",
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.29",
+  "requests>=2.31",
+  "prometheus-client>=0.20",
+]
+
+[project.optional-dependencies]
+ui = ["streamlit>=1.35", "pandas>=2.1"]
+eval = ["mlflow>=2.14"]
+dev = ["pytest>=8", "httpx>=0.27", "ruff>=0.5", "pandas>=2.1"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 130
+target-version = "py311"
+extend-exclude = ["airflow"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501", "B008", "B905"]

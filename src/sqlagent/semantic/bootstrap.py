@@ -344,6 +344,7 @@ def apply_overrides(model: SemanticModel, path: str) -> list[str]:
                 j.enabled = patch.get("enabled", j.enabled)
                 j.notes = patch.get("notes", j.notes)
     model.glossary.update(ov.get("glossary") or {})
+    model.defaults.update(ov.get("defaults") or {})
     for name, payload in (ov.get("enrichment_synonyms") or {}).items():
         # Model-suggested vocabulary: kept, but labelled so it is never mistaken for approved.
         col = model.columns.get(name)

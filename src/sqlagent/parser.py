@@ -126,6 +126,14 @@ class QuestionParser:
                                 compare_months=prev.compare_months if ctx.time_window is None else ctx.time_window.compare_months)
             out.plan = plan
         else:
+            default_ref = self.model.defaults.get("measure")
+            if not measures and default_ref and (ctx.dimensions or ctx.entities or ctx.value_matches) and (
+                    _GROWTH.search(q) or _RANK.search(q) or _TREND.search(q) or _PARETO.search(q)):
+                measures = [MeasureSpec(kind="column", ref=default_ref)]
+                col = self.model.columns.get(default_ref)
+                out.notes.append(f"No measure was named, so the answer uses {col.display if col else default_ref}, "
+                                 f"the default measure. Name another measure to change it.")
+                out.penalties["default_measure"] = 0.15
             if not measures:
                 out.clarify = ("I could not find a measure in that question. Try naming what to measure, for example "
                                "turnover, gross margin, market share or marketing spend.")
@@ -164,7 +172,11 @@ class QuestionParser:
             out.plan = plan
 
         out.needs_deep = out.plan.archetype in ("pareto", "growth", "quadrant", "compare") or len(self._tables(out.plan)) > 1
+        defaulted = out.penalties.get("default_measure")
         self._score(ctx, out)
+        if defaulted:
+            out.penalties["default_measure"] = defaulted
+            out.confidence = round(max(0.0, out.confidence - defaulted), 2)
         return out
 
     # ------------------------------------------------------------------------
@@ -174,9 +186,9 @@ class QuestionParser:
         for col in ctx.measures:
             if ctx.term_of.get(f"column:{col.ref}") in metric_terms:
                 continue  # 'gross margin' asked: the metric, not the profit column sharing the words
-            if any(s.kind == "column" and s.ref.split(".")[0] == col.table and
-                   ctx.term_of.get(f"column:{s.ref}") == ctx.term_of.get(f"column:{col.ref}") for s in specs):
-                continue  # one phrase, one measure: the strongest match already took it
+            if any(s.kind == "column" and ctx.term_of.get(f"column:{s.ref}") == ctx.term_of.get(f"column:{col.ref}")
+                   for s in specs):
+                continue  # one phrase, one measure: the strongest match (in any file) already took it
             specs.append(MeasureSpec(kind="column", ref=col.ref))
         return specs[:2]
 
@@ -197,14 +209,32 @@ class QuestionParser:
         return metric.numerator.split(".", 1)[0]
 
     def _group_by(self, ctx: SemanticContext, q: str, measures: list[MeasureSpec]) -> list[str]:
-        filtered_cols = {m.ref for m in ctx.value_matches}
-        filtered_entities = {self.model.columns[m.ref].entity for m in ctx.value_matches if m.ref in self.model.columns}
+        # A dimension pinned to one value ('turnover for Spark') is a filter, not a breakdown,
+        # unless the question also asks to break down or rank by it. Exclusions never pin.
+        pinned_cols, pinned_entities = set(), set()
+        per_col: dict[str, int] = {}
+        for m in ctx.value_matches:
+            if not m.negated:
+                per_col[m.ref] = per_col.get(m.ref, 0) + 1
+        for ref, n in per_col.items():
+            if n == 1:
+                pinned_cols.add(ref)
+                col = self.model.columns.get(ref)
+                if col is not None and col.entity:
+                    pinned_entities.add(col.entity)
+        asks_breakdown = bool(_BY.search(q) or _RANK.search(q) or _TOP_N.search(q))
         table = self._primary_table(measures)
         out: list[str] = []
-        for col in ctx.dimensions:
-            if col.ref in filtered_cols or col.role == ROLE_TIME:
+        entity_terms = {ctx.term_of.get(f"entity:{e}"): e for e in ctx.entities}
+        ordered = sorted(ctx.dimensions, key=lambda c: (c.table != table or not c.entity, ))
+        for col in ordered:
+            if col.role == ROLE_TIME:
                 continue
-            if col.entity and col.entity in filtered_entities and not _BY.search(q):
+            term = ctx.term_of.get(f"column:{col.ref}")
+            if term in entity_terms and col.entity != entity_terms[term]:
+                continue  # 'brand' named the brand entity; 'Sub Brand' only shares the word
+            pinned = col.ref in pinned_cols or (col.entity in pinned_entities if col.entity else False)
+            if pinned and not asks_breakdown:
                 continue
             key = f"entity:{col.entity}" if col.entity else col.ref
             # A named column in the measure's own file beats the entity in general.

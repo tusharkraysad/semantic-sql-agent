@@ -71,7 +71,7 @@ class Registry:
         self.tables: dict[str, TableProfile] = {}
 
     @classmethod
-    def load(cls, data_dir: str) -> "Registry":
+    def load(cls, data_dir: str) -> Registry:
         reg = cls(data_dir)
         cfg_path = os.path.join(data_dir, "data_sources.yaml")
         with open(cfg_path, encoding="utf-8") as f:

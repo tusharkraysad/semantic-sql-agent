@@ -44,6 +44,10 @@ class Settings:
     artifact_root: str = field(default_factory=lambda: _env("ARTIFACT_DIR", "artifacts"))
     overrides_path: str = field(default_factory=lambda: _env("SEMANTIC_OVERRIDES", "config/semantic_overrides.yaml"))
     state_dir: str = field(default_factory=lambda: _env("STATE_DIR", "state"))
+    # Build (and generate demo data if missing) on startup when no matching artifacts exist.
+    # On for local and free hosting; off in Kubernetes, where a Job builds artifacts.
+    auto_build: bool = field(default_factory=lambda: _env_bool("AUTO_BUILD", False))
+    generate_if_missing: bool = field(default_factory=lambda: _env_bool("GENERATE_DEMO_DATA", False))
 
     # -- models (OpenAI-compatible; "none" runs fully deterministic) ---------
     llm_provider: str = field(default_factory=lambda: _env("LLM_PROVIDER", "none"))

@@ -11,11 +11,20 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from ..text_utils import ANALYSIS_WORDS, NEGATION_CUES, STOPWORDS, negated_terms, ngrams, normalize, similarity, singularize, tokens
+from ..text_utils import (
+    ANALYSIS_WORDS,
+    NEGATION_CUES,
+    STOPWORDS,
+    negated_terms,
+    ngrams,
+    normalize,
+    similarity,
+    singularize,
+    tokens,
+)
 from .model import ROLE_DIMENSION, ROLE_TIME, SOURCE_ENRICHMENT, Metric, SemanticColumn, SemanticModel
-from .time_layer import PeriodCatalog, ResolvedWindow, TimeWindow
+from .time_layer import PeriodCatalog, TimeWindow
 from .value_index import ValueIndex, ValueMatch
-
 
 NEGATION_WORDS = {t for cue in NEGATION_CUES for t in cue.split()}
 

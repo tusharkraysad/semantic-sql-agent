@@ -120,10 +120,17 @@ def _cue_ends(toks: list[str]) -> list[int]:
 def negated_terms(text: str, terms, window: int = 4) -> set[str]:
     """
     Which candidate terms a negation cue governs: the first candidate starting
-    within `window` tokens to the right of the cue, and nothing further. So
-    'sales excluding January' negates January, while 'excluding returns, sales
-    in January' does not.
+    within `window` tokens to the right of the cue, inside the same clause, and
+    nothing further. So 'sales excluding January' negates January, while
+    'excluding returns, sales in January' does not: the comma closes the scope.
     """
+    out: set[str] = set()
+    for clause in re.split(r"[,;:.]+(?:\s|$)|\bbut\b", text):
+        out |= _negated_in_clause(clause, terms, window)
+    return out
+
+
+def _negated_in_clause(text: str, terms, window: int) -> set[str]:
     hay = tokens(text)
     positions: list[tuple[int, str]] = []
     for term in terms:

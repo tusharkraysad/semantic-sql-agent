@@ -71,6 +71,7 @@ class Composer:
         self._cmp_windows: dict[str, str] = {}
         self._n = 0
         window = self._window(plan)
+        self._ref_table = self._primary_table(plan)
         infos = [self._info(m) for m in plan.measures]
         tables = sorted({t for i in infos for t in i.tables})
         fold = len(tables) > 1
@@ -249,25 +250,67 @@ class Composer:
         self._n += 1
         return f"{stem}{self._n}"
 
+    def _crosswalk(self, c: SemanticColumn) -> dict[str, str]:
+        """
+        Entity crosswalk for cross-file joins: values of this file's column that
+        have no exact counterpart in the reference file, mapped by the value
+        index's strict matching ('Glint Dishwash' -> 'Glint'). Deterministic and
+        reported, so a renamed brand stops silently dropping out of a join.
+        """
+        ref_table = getattr(self, "_ref_table", None)
+        if not c.entity or ref_table is None or c.table == ref_table:
+            return {}
+        entity = self.model.entities.get(c.entity)
+        target = entity.column_in(ref_table) if entity else None
+        if target is None:
+            return {}
+        target_ref = f"{ref_table}.{target}"
+        target_norm = {v.lower().strip() for v in self.values.values.get(target_ref, [])}
+        mapping = {}
+        for v in self.values.values.get(c.ref, []):
+            key = v.lower().strip()
+            if key in target_norm:
+                continue
+            canon, method, _ = self.values.canonicalize(target_ref, v)
+            if canon is not None:
+                mapping[key] = canon.lower().strip()
+        if mapping:
+            shown = ", ".join(f"{k} -> {v}" for k, v in list(mapping.items())[:4])
+            note = f"Matched {len(mapping)} differently spelled {c.entity} name(s) across files ({shown})."
+            if note not in self._notes:
+                self._notes.append(note)
+        return mapping
+
+    def _key_expr(self, c: SemanticColumn) -> str:
+        base = f"LOWER(TRIM(CAST({qi(c.column)} AS VARCHAR)))"
+        mapping = self._crosswalk(c)
+        if not mapping:
+            return base
+        whens = " ".join(f"WHEN {ql(k)} THEN {ql(v)}" for k, v in sorted(mapping.items()))
+        return f"CASE {base} {whens} ELSE {base} END"
+
     def _group_select(self, cols: list[SemanticColumn], table: str, fold: bool) -> tuple[list[str], list[str]]:
         """(select expressions with aliases, group-by expressions) for the shared aliases g0, g1, ..."""
         sel, grp = [], []
         for i, c in enumerate(cols):
-            expr = f"LOWER(TRIM(CAST({qi(c.column)} AS VARCHAR)))" if fold else qi(c.column)
+            expr = self._key_expr(c) if fold else qi(c.column)
             sel.append(f"{expr} AS g{i}")
             grp.append(expr)
-            axis = self.periods.axes.get(table)
-            if axis and axis.column == c.column and not fold:
-                sel.append(f"{axis.sort_expr()} AS s{i}")
-                grp.append(axis.sort_expr())
+            if self._needs_sort_key(table, c, fold):
+                sel.append(f"{self.periods.axes[table].sort_expr()} AS s{i}")
+                grp.append(self.periods.axes[table].sort_expr())
         return sel, grp
+
+    def _needs_sort_key(self, table: str, c: SemanticColumn, fold: bool) -> bool:
+        """Text periods need a chronological sort key; real dates already sort."""
+        axis = self.periods.axes.get(table)
+        return bool(axis and axis.column == c.column and not fold and axis.fmt != "date")
 
     def _aliases(self, cols: list[SemanticColumn], table: str, fold: bool) -> list[str]:
         out = []
         for i, c in enumerate(cols):
             out.append(f"g{i}")
-            axis = self.periods.axes.get(table)
-            if axis and axis.column == c.column and not fold:
+            if self._needs_sort_key(table, c, fold):
                 out.append(f"s{i}")
         return out
 
@@ -346,7 +389,7 @@ class Composer:
         axis = self.periods.axes.get(primary)
         for i, c in enumerate(cols):
             if axis and axis.column == c.column:
-                order = f"{src}.s{i}"
+                order = f"{src}.s{i}" if self._needs_sort_key(primary, c, fold) else f"{src}.g{i}"
         return proj, "", labels, order
 
     def _wrap(self, select: str) -> str:

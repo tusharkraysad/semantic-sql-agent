@@ -217,6 +217,7 @@ class SemanticModel:
     metrics: dict = field(default_factory=dict)
     joins: list = field(default_factory=list)
     glossary: dict = field(default_factory=dict)
+    defaults: dict = field(default_factory=dict)   # e.g. {"measure": "finance_pnl.Total Turnover"}
 
     # -- lookups -------------------------------------------------------------
     def column(self, table: str, column: str) -> SemanticColumn | None:
@@ -290,11 +291,12 @@ class SemanticModel:
             "metrics": {k: asdict(v) for k, v in self.metrics.items()},
             "joins": [asdict(j) for j in self.joins],
             "glossary": dict(self.glossary),
+            "defaults": dict(self.defaults),
             "columns": {k: asdict(v) for k, v in self.columns.items()},
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> "SemanticModel":
+    def from_dict(cls, d: dict) -> SemanticModel:
         def build(kind, payload):
             fields_ = kind.__dataclass_fields__
             return kind(**{k: v for k, v in payload.items() if k in fields_})
@@ -307,6 +309,7 @@ class SemanticModel:
             metrics={k: build(Metric, v) for k, v in (d.get("metrics") or {}).items()},
             joins=[build(JoinPath, j) for j in (d.get("joins") or [])],
             glossary=dict(d.get("glossary") or {}),
+            defaults=dict(d.get("defaults") or {}),
         )
 
     def save(self, path: str) -> None:
@@ -314,7 +317,7 @@ class SemanticModel:
             yaml.safe_dump(self.to_dict(), f, sort_keys=False, allow_unicode=True, width=120)
 
     @classmethod
-    def load(cls, path: str) -> "SemanticModel":
+    def load(cls, path: str) -> SemanticModel:
         with open(path, encoding="utf-8") as f:
             return cls.from_dict(yaml.safe_load(f) or {})
 

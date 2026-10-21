@@ -88,7 +88,7 @@ class ValueIndex:
 
     # -- build / persist -----------------------------------------------------
     @classmethod
-    def build(cls, registry, model: SemanticModel, settings: Settings) -> "ValueIndex":
+    def build(cls, registry, model: SemanticModel, settings: Settings) -> ValueIndex:
         values: dict[str, list[str]] = {}
         for ref, col in model.columns.items():
             if col.role != ROLE_DIMENSION:
@@ -104,7 +104,7 @@ class ValueIndex:
             json.dump({"columns": self.values}, f)
 
     @classmethod
-    def load(cls, path: str, settings: Settings) -> "ValueIndex":
+    def load(cls, path: str, settings: Settings) -> ValueIndex:
         with open(path, encoding="utf-8") as f:
             return cls(json.load(f)["columns"], settings)
 

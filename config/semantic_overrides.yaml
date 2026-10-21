@@ -67,3 +67,8 @@ glossary:
 # Vocabulary suggested by an enrichment model and not yet confirmed by a person.
 enrichment_synonyms:
   finance_pnl.Total COP: [manufacturing cost]
+
+# Used when a question asks to rank or trend something without naming a measure
+# ("which brands grew fastest"). The answer always says it made this choice.
+defaults:
+  measure: finance_pnl.Total Turnover

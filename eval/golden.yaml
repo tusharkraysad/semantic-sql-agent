@@ -1,0 +1,39 @@
+# Golden questions. Each expected answer is computed independently in
+# eval/reference.py with plain Polars written against the raw files, NOT through
+# the semantic layer, so the two implementations check each other.
+#
+# kind: scalar | ranked (order matters) | set (order ignored) | quadrant | growth | refuse
+# thread: questions sharing a thread run in order as one conversation; only the
+#         last one in a thread is scored unless `score: true` is set.
+items:
+  - {id: G01, question: "Total turnover in 2025", kind: scalar}
+  - {id: G02, question: "Top 5 brands by revenue in 2025", kind: ranked}
+  - {id: G03, question: "Revenue by big c in the last 3 months", kind: set}
+  - {id: G04, question: "Gross margin by brand in 2025", kind: set}
+  - {id: G05, question: "Bottom 3 regions by gross profit in dec-25", kind: ranked}
+  - {id: G06, question: "Turnover trend for Spark in 2025", kind: ranked}
+  - {id: G07, question: "Market share of velvet in skin care in apr-26", kind: scalar}
+  - {id: G08, question: "Top 3 brands by market share in fabric wash in apr-26", kind: ranked}
+  - {id: G09, question: "Retail sales by manufacturer in dec-25", kind: set}
+  - {id: G10, question: "Category sales for hair care in jan-26", kind: scalar}
+  - {id: G11, question: "Marketing spend by media type in 2025", kind: set}
+  - {id: G12, question: "Marketing spend for Clearo in 2025", kind: scalar}
+  - {id: G13, question: "Top 3 brands by turnover excluding Lumen in 2025", kind: ranked}
+  - {id: G14, question: "Total turnover excluding dec-25", kind: scalar}
+  - {id: G15, question: "Pareto of SKUs by turnover in 2025", kind: ranked}
+  - {id: G16, question: "Which brands grew fastest in 2025 vs 2024", kind: growth}
+  - {id: G17, question: "Turnover of brightwav in 2025", kind: scalar}
+  - {id: G18, question: "Turnover for matrix brand in 2025", kind: scalar}
+  - {id: G19, question: "Volume by region in 2025", kind: set}
+  - {id: G20, question: "Sales in Q3 2025 by small c", kind: set}
+  - {id: G21, question: "Acquisition turnover in 2025", kind: scalar}
+  - {id: G22, question: "Marketing intensity by brand in 2025", kind: set}
+  - {id: G23, question: "Market share trend for Spark", kind: ranked}
+  - {id: G24, question: "2x2 matrix of brands by turnover and gross margin in 2025", kind: quadrant}
+  - {id: G25a, question: "Turnover for Spark in 2025", kind: scalar, thread: F1, score: false}
+  - {id: G25, question: "Now for Glint", kind: scalar, thread: F1}
+  - {id: G26, question: "What is the weather in Bengaluru", kind: refuse}
+  - {id: G27, question: "Turnover by big c and marketing spend", kind: refuse}
+  - {id: G28, question: "Turnover yoy for dec-25 by big c", kind: growth}
+  - {id: G29, question: "How did gross margin change in 2025 vs 2024 by big c", kind: growth}
+  - {id: G30, question: "Highest selling region for Lumen in 2025", kind: ranked}

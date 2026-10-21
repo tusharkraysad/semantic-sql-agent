@@ -15,3 +15,4 @@ data/*.xlsx
 build/
 dist/
 .coverage
+mlflow.db

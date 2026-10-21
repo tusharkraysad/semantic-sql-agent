@@ -149,7 +149,7 @@ class PeriodCatalog:
         self.axes = axes
 
     @classmethod
-    def build(cls, registry, model: SemanticModel) -> "PeriodCatalog":
+    def build(cls, registry, model: SemanticModel) -> PeriodCatalog:
         axes = {}
         for table, frame in registry.frames.items():
             t = model.tables.get(table)
@@ -179,7 +179,7 @@ class PeriodCatalog:
             json.dump(payload, f, indent=1)
 
     @classmethod
-    def load(cls, path: str) -> "PeriodCatalog":
+    def load(cls, path: str) -> PeriodCatalog:
         with open(path, encoding="utf-8") as f:
             payload = json.load(f)
         return cls({t: TimeAxis(t, a["column"], a["fmt"], {int(k): v for k, v in a["periods"].items()}, a["unparsed"])
