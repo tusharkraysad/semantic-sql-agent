@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+artifacts/
+state/
+mlruns/
+mlartifacts/
+eval/reports/
+data/*.csv
+data/*.xlsx
+.env
+*.egg-info/
+build/
+dist/
+.coverage

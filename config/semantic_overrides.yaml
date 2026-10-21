@@ -1,0 +1,69 @@
+# Human-approved semantic definitions.
+# Everything here wins over what bootstrap infers from the data. Changes to this
+# file go through a pull request, which is how a business owner approves a metric.
+
+tables:
+  finance_pnl:
+    label: P&L
+    synonyms: [pnl, p and l, finance, profit and loss]
+  market_share:
+    label: Market share
+    synonyms: [nielsen, retail panel, market data]
+  bmi_spends:
+    label: Marketing spend
+    synonyms: [bmi, marketing, media spend]
+    # Forecast rows are plans, not actuals.
+    default_filters: ["\"Version\" = 'Actual'"]
+
+columns:
+  finance_pnl.Total Turnover:
+    description: Net turnover in crores.
+  finance_pnl.Total Acquisition Turnover:
+    description: Turnover adjustments from acquisitions. Zero on almost every row.
+    notes: Not a revenue measure. Use Total Turnover for sales or revenue questions.
+  market_share.Sales_Value_Crs:
+    label: Retail sales value
+    description: Panel-measured retail sales value in crores.
+  market_share.cat_sales:
+    label: Category sales
+  bmi_spends.Value:
+    label: Marketing spend
+    description: Brand and marketing investment in crores.
+  market_share.BRAND:
+    synonyms: [brand]
+
+metrics:
+  gross_margin_pct:
+    label: Gross margin %
+    description: Gross profit as a percentage of turnover.
+    numerator: finance_pnl.Total Gross Profit
+    denominator: finance_pnl.Total Turnover
+    scale: 100
+    status: approved
+    synonyms: [gross margin, margin, gm, profitability]
+  value_share_pct:
+    label: Value market share %
+    description: Brand retail sales as a percentage of category sales in the same market and month.
+    numerator: market_share.Sales_Value_Crs
+    denominator: market_share.cat_sales
+    scale: 100
+    status: approved
+    synonyms: [market share, value share, share of market, ms]
+  marketing_intensity_pct:
+    label: Marketing intensity %
+    description: Marketing spend as a percentage of turnover, joined on brand.
+    numerator: bmi_spends.Value
+    denominator: finance_pnl.Total Turnover
+    scale: 100
+    status: provisional
+    synonyms: [marketing intensity, bmi to turnover, a and p ratio, spend to sales]
+    notes: Provisional until finance confirms the spend definition.
+
+glossary:
+  bmi: Brand and marketing investment, the media and advertising spend.
+  pareto: Ranking by a measure with each item's cumulative share of the total.
+  value share: Brand retail sales divided by the category's retail sales.
+
+# Vocabulary suggested by an enrichment model and not yet confirmed by a person.
+enrichment_synonyms:
+  finance_pnl.Total COP: [manufacturing cost]

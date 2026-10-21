@@ -1,0 +1,11 @@
+# Which files the agent loads. Paths are relative to this file.
+sources:
+  - name: finance_pnl
+    path: finance_pnl.csv
+    description: Monthly profit and loss by SKU and region (Jan-2024 to Dec-2025).
+  - name: market_share
+    path: market_share.csv
+    description: Syndicated retail panel by market, category and brand (Nov-25 to Apr-26).
+  - name: bmi_spends
+    path: bmi_spends.csv
+    description: Brand and marketing investment by brand, media type and month, with forecasts.
