@@ -48,3 +48,22 @@ def test_citation_check_tags_invented_numbers():
     frame = pl.DataFrame({"Brand": ["A"], "Turnover": [314.13]})
     text, bad = check("A leads with 314.1, up from 999.9.", frame, "q")
     assert bad == ["999.9"] and "[unverified]" in text
+
+
+def test_missing_csvs_are_regenerated(tmp_path, monkeypatch):
+    """A checkout has data_sources.yaml but no CSVs (they are gitignored): the demo must still start."""
+    import shutil
+
+    from sqlagent.config import get_settings
+    from sqlagent.engine import Engine
+    from sqlagent.registry import data_present
+
+    data = tmp_path / "data"
+    data.mkdir()
+    shutil.copy(__import__("os").path.join(__import__("os").environ["DATA_DIR"], "data_sources.yaml"), data)
+    assert not data_present(str(data))
+    monkeypatch.setenv("DATA_DIR", str(data))
+    monkeypatch.setenv("ARTIFACT_DIR", str(tmp_path / "artifacts"))
+    monkeypatch.setenv("GENERATE_DEMO_DATA", "1")
+    engine = Engine(get_settings())
+    assert data_present(str(data)) and engine.loaded.version

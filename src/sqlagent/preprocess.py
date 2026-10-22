@@ -15,11 +15,11 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
+import os  # noqa: F401  (kept for the xcom path check)
 
 from . import artifacts, quality, synthetic
 from .config import get_settings
-from .registry import Registry
+from .registry import Registry, data_present
 
 
 def _emit(payload: dict) -> None:
@@ -39,7 +39,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--skip-if-unchanged", action="store_true")
     args = ap.parse_args(argv)
     s = get_settings()
-    if args.generate and not os.path.exists(os.path.join(s.data_dir, "data_sources.yaml")):
+    if args.generate and not data_present(s.data_dir):
         synthetic.main(["--out", s.data_dir, "--seed", str(args.seed)])
     registry = Registry.load(s.data_dir)
     current = artifacts.current_version(s)

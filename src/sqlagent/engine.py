@@ -19,7 +19,7 @@ from .executor import Executor
 from .logging_utils import get_logger
 from .observability import DATA_VERSION
 from .parser import QuestionParser
-from .registry import Registry
+from .registry import Registry, data_present
 from .retriever import HybridRetriever
 from .semantic.resolver import Resolver
 from .sql_validator import SQLValidator
@@ -52,10 +52,10 @@ class Engine:
         self.load()
 
     def _ensure_data(self) -> None:
-        if os.path.exists(os.path.join(self.s.data_dir, "data_sources.yaml")):
+        if data_present(self.s.data_dir):
             return
         if not self.s.generate_if_missing:
-            raise FileNotFoundError(f"No data_sources.yaml in {self.s.data_dir}. Set GENERATE_DEMO_DATA=1 for synthetic data.")
+            raise FileNotFoundError(f"Data files missing in {self.s.data_dir}. Set GENERATE_DEMO_DATA=1 for synthetic data.")
         log.info("No data found; generating synthetic demo data into %s", self.s.data_dir)
         synthetic.main(["--out", self.s.data_dir])
 

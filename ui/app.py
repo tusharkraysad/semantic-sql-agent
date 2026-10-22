@@ -124,6 +124,7 @@ if question:
             try:
                 resp = ask(question, st.session_state.thread_id)
             except Exception as e:
-                resp = {"answer": f"Could not reach the service: {e}"}
+                where = f"the service at {API_URL}" if API_URL else "the embedded agent"
+                resp = {"answer": f"Something went wrong in {where}: {e}"}
         render(resp)
     st.session_state.history.append((question, resp))

@@ -64,6 +64,17 @@ def _coerce(frame: pl.DataFrame) -> pl.DataFrame:
     return pl.DataFrame(out)
 
 
+def data_present(data_dir: str) -> bool:
+    """True when data_sources.yaml exists AND every file it lists is on disk."""
+    cfg_path = os.path.join(data_dir, "data_sources.yaml")
+    if not os.path.exists(cfg_path):
+        return False
+    with open(cfg_path, encoding="utf-8") as f:
+        cfg = yaml.safe_load(f) or {}
+    sources = cfg.get("sources", [])
+    return bool(sources) and all(os.path.exists(os.path.join(data_dir, s["path"])) for s in sources)
+
+
 class Registry:
     def __init__(self, data_dir: str):
         self.data_dir = data_dir
