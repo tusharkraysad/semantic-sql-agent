@@ -58,7 +58,7 @@ def render(resp: dict) -> None:
                 st.scatter_chart(df, x=chart["x"], y=chart["y"], color="Quadrant" if "Quadrant" in df.columns else None)
         except Exception:
             pass
-        st.dataframe(df, hide_index=True, use_container_width=True)
+        st.dataframe(df, hide_index=True, width="stretch")
     meta = f"Confidence {resp.get('confidence', 0):.2f}"
     if resp.get("mode"):
         meta += f" | {resp['mode']} path"
@@ -102,7 +102,7 @@ with st.sidebar:
         "Category sales for hair care in jan-26",
     ]
     for ex in examples:
-        if st.button(ex, use_container_width=True):
+        if st.button(ex, width="stretch"):
             st.session_state.pending = ex
     if st.button("New conversation", type="secondary"):
         st.session_state.thread_id = uuid.uuid4().hex[:12]

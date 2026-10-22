@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import os  # noqa: F401  (kept for the xcom path check)
+import os
 
 from . import artifacts, quality, synthetic
 from .config import get_settings
