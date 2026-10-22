@@ -42,6 +42,15 @@ jobs:
           path: |
             eval/reports/
             mlflow.db
+      - name: Robustness - same golden set on other random draws of the data
+        env:
+          MLFLOW_DISABLE_AGENT_HINT: "1"
+        run: |
+          for seed in 8 42; do
+            rm -rf /tmp/s && python scripts/generate_data.py --out /tmp/s/data --seed $seed
+            DATA_DIR=/tmp/s/data ARTIFACT_DIR=/tmp/s/artifacts STATE_DIR=/tmp/s/state \
+              python eval/run_eval.py --no-mlflow --data-dir /tmp/s/data --min-accuracy 1.0
+          done
 
   airflow-dag:
     name: Airflow DAG parses (both run modes)
@@ -72,6 +81,55 @@ jobs:
           assert "evaluate" in dag.task_ids and "verify_api" in dag.task_ids
           PY
           done
+
+  airflow-e2e:
+    name: Airflow DAG runs end to end (new data -> evaluate -> promote -> live API switches)
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}/src
+      SQLAGENT_PROJECT: ${{ github.workspace }}
+      DATA_DIR: /tmp/work/data
+      ARTIFACT_DIR: /tmp/work/artifacts
+      STATE_DIR: /tmp/work/state
+      SEMANTIC_OVERRIDES: ${{ github.workspace }}/config/semantic_overrides.yaml
+      SQLAGENT_API_URL: http://localhost:8000
+      EVAL_MIN_ACCURACY: "0.95"
+      AIRFLOW_HOME: /tmp/airflow
+      AIRFLOW__CORE__DAGS_FOLDER: ${{ github.workspace }}/airflow/dags
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Airflow 2.10.5 and the project
+        run: |
+          pip install "apache-airflow==2.10.5" \
+            --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.10.5/constraints-3.12.txt"
+          pip install -r requirements.txt
+          airflow db migrate > /dev/null
+      - name: Serve version 1 (data seed 7)
+        run: |
+          python scripts/generate_data.py --out $DATA_DIR --seed 7
+          python -m sqlagent.preprocess --promote
+          nohup uvicorn sqlagent.api:app --port 8000 > /tmp/api.log 2>&1 &
+          for i in $(seq 1 30); do curl -fs localhost:8000/ready && break; sleep 2; done
+          curl -fs localhost:8000/version | python3 -c "import sys,json; print(json.load(sys.stdin)['artifact_version'])" | tee /tmp/v1
+      - name: New data arrives (seed 8)
+        run: rm -rf $DATA_DIR && python scripts/generate_data.py --out $DATA_DIR --seed 8
+      - name: Run the DAG
+        run: airflow dags test semantic_layer_refresh 2026-10-22
+      - name: The live API now serves the new, evaluated version
+        run: |
+          v2=$(curl -fs localhost:8000/version | python3 -c "import sys,json; print(json.load(sys.stdin)['artifact_version'])")
+          echo "before: $(cat /tmp/v1)  after: $v2"
+          test "$v2" != "$(cat /tmp/v1)"
+          curl -fs -X POST localhost:8000/ask -H 'content-type: application/json' \
+            -d '{"question":"Top 5 brands by revenue in 2025"}' | python3 -c "import sys,json; r=json.load(sys.stdin); print(r['answer']); assert r['status']=='ok'"
+      - name: API log
+        if: always()
+        run: tail -50 /tmp/api.log
 
   docker-kind:
     name: Docker build, then deploy to a kind cluster
@@ -123,7 +181,7 @@ jobs:
 
   publish:
     name: Publish images to GHCR
-    needs: [test, airflow-dag, docker-kind]
+    needs: [test, airflow-dag, airflow-e2e, docker-kind]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:

@@ -74,7 +74,7 @@ Set `LLM_PROVIDER`, `LLM_BASE_URL`, `LLM_API_KEY`, `PLANNER_MODEL` and `WRITER_M
 
 `eval/golden.yaml` holds 30 questions, including a follow-up conversation and two that must be refused. Expected answers are computed **independently** in `eval/reference.py` with plain Polars written against the raw files (not through the semantic layer), and scored on **execution match**: the labels and numbers in the answer must equal the reference within 1e-6. SQL text is never compared.
 
-Current result in deterministic mode (no model): **30 / 30**, mean latency ~15 ms per question. Each run is logged to MLflow with its parameters, metrics and report, and CI fails on any regression against `eval/baseline.json`.
+Current result in deterministic mode (no model): **30 / 30**, mean latency ~15 ms per question. The same set also passes on other random draws of the data (seeds 8, 11, 23, 42), and CI re-checks two of them, so the logic is not tuned to one dataset. Each run is logged to MLflow with its parameters, metrics and report, and CI fails on any regression against `eval/baseline.json`.
 
 **Read this number honestly.** The golden set was written alongside the system, so it is a regression suite that proves fixed bugs stay fixed. It is not an estimate of accuracy on questions nobody has seen. The next step for a real accuracy figure is a set written by business users who did not build the system.
 
@@ -84,7 +84,7 @@ Current result in deterministic mode (no model): **30 / 30**, mean latency ~15 m
 |---|---|---|
 | Docker | `docker/Dockerfile`: one multi-stage file, targets `api`, `ui`, `tools`, `demo`; non-root; healthcheck | Built and smoke-tested in CI on every push |
 | Kubernetes | `deploy/k8s`: kustomize base (Job, Deployment, Services, PVC, ConfigMap, NetworkPolicy) + `kind` and `production` overlays | Deployed to an ephemeral **kind** cluster in CI and smoke-tested through the Service. Not running in a managed cloud cluster |
-| Airflow | `airflow/dags/semantic_refresh.py`: detect, validate, build, evaluate, promote, verify; local or KubernetesPodOperator mode | DAG parsing tested in CI in both modes; local Airflow via `airflow/docker-compose.yaml` |
+| Airflow | `airflow/dags/semantic_refresh.py`: detect, validate, build, evaluate, promote, verify; local or KubernetesPodOperator mode | Local mode runs end to end in CI (`airflow dags test`): new data is validated, built, evaluated, promoted, and the live API is checked to have switched versions. Kubernetes mode is parse-tested only |
 | MLflow | Evaluation runs (params, metrics, report) via `eval/run_eval.py`; server in Compose | Working locally and in CI (`mlflow.db` uploaded as a CI artifact) |
 | CI/CD | `.github/workflows/ci.yml`: lint, tests, eval gate, DAG check, Docker, kind deploy, push to GHCR | Runs on every push and pull request |
 | Monitoring | `/metrics` (Prometheus), Grafana dashboard provisioned in Compose, JSON logs to stdout | Working in Compose |
