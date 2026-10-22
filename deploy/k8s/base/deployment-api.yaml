@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: semantic-sql-api
+  labels: {app: semantic-sql, component: api}
+spec:
+  # One replica: every replica loads all files into memory, and the volume is
+  # ReadWriteOnce. Scale vertically first; see docs/runbook.md for scaling out.
+  replicas: 1
+  # Recreate, not RollingUpdate: a new pod on another node could not attach the
+  # RWO volume while the old pod still holds it (Multi-Attach error).
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: semantic-sql, component: api}
+  template:
+    metadata:
+      labels: {app: semantic-sql, component: api}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: /metrics
+    spec:
+      securityContext: {runAsNonRoot: true, runAsUser: 10001, fsGroup: 10001}
+      initContainers:
+        # Wait for the preprocess Job to promote artifacts instead of crash-looping.
+        - name: wait-for-artifacts
+          image: semantic-sql-agent:latest
+          command: ["python", "-c", "import os,time\nwhile not os.path.exists('/srv/state/artifacts/CURRENT'): time.sleep(2)"]
+          volumeMounts:
+            - {name: state, mountPath: /srv/state}
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {cpu: 100m, memory: 64Mi}
+      containers:
+        - name: api
+          image: semantic-sql-agent:latest
+          ports: [{name: http, containerPort: 8000}]
+          envFrom:
+            - configMapRef: {name: semantic-sql-config}
+            - secretRef: {name: llm-gateway, optional: true}
+          # Measured peak RSS ~170 MB on the demo data with all files loaded and a
+          # mixed question load; the limit leaves ~3x headroom. Re-measure on real data.
+          resources:
+            requests: {cpu: 250m, memory: 256Mi}
+            limits: {cpu: "1", memory: 512Mi}
+          startupProbe:
+            httpGet: {path: /ready, port: http}
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: {path: /ready, port: http}
+            periodSeconds: 10
+          livenessProbe:
+            # Liveness only checks the process; a slow query must never get the pod killed.
+            httpGet: {path: /health, port: http}
+            periodSeconds: 20
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: state, mountPath: /srv/state}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: state
+          persistentVolumeClaim: {claimName: semantic-sql-state}
+        - name: tmp
+          emptyDir: {}

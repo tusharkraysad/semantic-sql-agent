@@ -1,0 +1,30 @@
+# Builds and promotes artifacts. Run once at install and whenever data or the
+# semantic overrides change (Airflow triggers the same command on a schedule).
+# It is a Job, not an init container, so a pod restart never repeats the build.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: semantic-sql-preprocess
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels: {app: semantic-sql, component: preprocess}
+    spec:
+      restartPolicy: Never
+      securityContext: {runAsNonRoot: true, runAsUser: 10001, fsGroup: 10001}
+      containers:
+        - name: preprocess
+          image: semantic-sql-agent:latest
+          command: ["python", "-m", "sqlagent.preprocess", "--generate", "--promote"]
+          envFrom:
+            - configMapRef: {name: semantic-sql-config}
+          resources:
+            requests: {cpu: 250m, memory: 256Mi}
+            limits: {cpu: "1", memory: 512Mi}
+          volumeMounts:
+            - {name: state, mountPath: /srv/state}
+      volumes:
+        - name: state
+          persistentVolumeClaim: {claimName: semantic-sql-state}

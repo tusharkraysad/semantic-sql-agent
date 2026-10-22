@@ -1,0 +1,12 @@
+# Holds data, built artifacts, the audit log and conversation checkpoints.
+# ReadWriteOnce is what most clusters offer by default, which is why the API
+# Deployment uses the Recreate strategy (see deployment-api.yaml).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: semantic-sql-state
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi

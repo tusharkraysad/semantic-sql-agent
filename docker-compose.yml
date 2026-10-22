@@ -1,0 +1,81 @@
+# Local stack. Core:            docker compose up --build
+#              + monitoring:    docker compose --profile monitoring up --build
+#              + MLflow + eval: docker compose --profile mlops up --build
+name: semantic-sql-agent
+
+x-env: &env
+  LLM_PROVIDER: ${LLM_PROVIDER:-none}
+  LLM_BASE_URL: ${LLM_BASE_URL:-}
+  LLM_API_KEY: ${LLM_API_KEY:-}
+  PLANNER_MODEL: ${PLANNER_MODEL:-}
+  WRITER_MODEL: ${WRITER_MODEL:-}
+
+services:
+  preprocess:
+    build: { context: ., dockerfile: docker/Dockerfile, target: api }
+    image: semantic-sql-agent:local
+    command: ["python", "-m", "sqlagent.preprocess", "--generate", "--promote"]
+    volumes: [state:/srv/state]
+    environment: *env
+
+  api:
+    image: semantic-sql-agent:local
+    depends_on:
+      preprocess: { condition: service_completed_successfully }
+    ports: ["8000:8000"]
+    volumes: [state:/srv/state]
+    environment: *env
+    mem_limit: 512m
+    restart: unless-stopped
+
+  ui:
+    build: { context: ., dockerfile: docker/Dockerfile, target: ui }
+    image: semantic-sql-agent-ui:local
+    depends_on:
+      api: { condition: service_healthy }
+    environment: { API_URL: "http://api:8000" }
+    ports: ["8501:8501"]
+
+  mlflow:
+    profiles: [mlops]
+    build: { context: ., dockerfile: docker/Dockerfile, target: tools }
+    image: semantic-sql-agent-tools:local
+    command: ["mlflow", "server", "--host", "0.0.0.0", "--port", "5000",
+              "--backend-store-uri", "sqlite:////mlflow/mlflow.db", "--default-artifact-root", "/mlflow/artifacts"]
+    user: "0"
+    volumes: [mlflow:/mlflow]
+    ports: ["5000:5000"]
+
+  eval:
+    profiles: [mlops]
+    image: semantic-sql-agent-tools:local
+    depends_on:
+      preprocess: { condition: service_completed_successfully }
+      mlflow: { condition: service_started }
+    volumes: [state:/srv/state]
+    environment:
+      <<: *env
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      STATE_DIR: /tmp/eval-state
+    command: ["python", "eval/run_eval.py", "--min-accuracy", "0.9"]
+
+  prometheus:
+    profiles: [monitoring]
+    image: prom/prometheus:v2.53.0
+    volumes: ["./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro"]
+    ports: ["9090:9090"]
+
+  grafana:
+    profiles: [monitoring]
+    image: grafana/grafana:11.1.0
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports: ["3000:3000"]
+
+volumes:
+  state: {}
+  mlflow: {}

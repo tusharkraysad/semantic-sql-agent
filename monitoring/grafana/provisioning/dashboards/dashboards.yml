@@ -1,0 +1,7 @@
+apiVersion: 1
+providers:
+  - name: semantic-sql-agent
+    folder: Semantic SQL Agent
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards

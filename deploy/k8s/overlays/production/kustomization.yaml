@@ -1,0 +1,13 @@
+# Example production overlay: images from GitHub Container Registry, pinned by
+# tag, and the model gateway secret expected to exist in the namespace.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+images:
+  - name: semantic-sql-agent
+    newName: ghcr.io/tusharkraysad/semantic-sql-agent
+    newTag: main
+  - name: semantic-sql-agent-ui
+    newName: ghcr.io/tusharkraysad/semantic-sql-agent-ui
+    newTag: main

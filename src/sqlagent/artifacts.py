@@ -61,6 +61,7 @@ def build(settings: Settings, registry: Registry | None = None) -> str:
         "code_version": __version__, "built_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "summary": model_summary(model), "notes": notes,
         "tables": {t: p.n_rows for t, p in registry.tables.items()},
+        "columns": {t: list(f.columns) for t, f in registry.frames.items()},
     }
     with open(os.path.join(out, "manifest.json"), "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2)
@@ -79,6 +80,8 @@ def promote(settings: Settings, version: str) -> None:
 
 
 def current_version(settings: Settings) -> str | None:
+    if settings.artifact_version:
+        return settings.artifact_version
     path = os.path.join(settings.artifact_root, "CURRENT")
     if not os.path.exists(path):
         return None

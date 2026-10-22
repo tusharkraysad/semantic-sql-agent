@@ -47,6 +47,8 @@ class Settings:
     # Build (and generate demo data if missing) on startup when no matching artifacts exist.
     # On for local and free hosting; off in Kubernetes, where a Job builds artifacts.
     auto_build: bool = field(default_factory=lambda: _env_bool("AUTO_BUILD", False))
+    # Pin a specific artifact version instead of CURRENT (used to evaluate a build before promoting it).
+    artifact_version: str = field(default_factory=lambda: _env("ARTIFACT_VERSION", ""))
     generate_if_missing: bool = field(default_factory=lambda: _env_bool("GENERATE_DEMO_DATA", False))
 
     # -- models (OpenAI-compatible; "none" runs fully deterministic) ---------

@@ -1,0 +1,27 @@
+# Used by CI: images are built in the workflow and loaded straight into kind,
+# so nothing is pulled from a registry.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+images:
+  - name: semantic-sql-agent
+    newTag: ci
+  - name: semantic-sql-agent-ui
+    newTag: ci
+patches:
+  - target: {kind: Deployment}
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/imagePullPolicy
+        value: Never
+  - target: {kind: Deployment, name: semantic-sql-api}
+    patch: |-
+      - op: add
+        path: /spec/template/spec/initContainers/0/imagePullPolicy
+        value: Never
+  - target: {kind: Job}
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/imagePullPolicy
+        value: Never

@@ -1,0 +1,15 @@
+# Only the UI and in-namespace scrapers may call the API. Enforced only on
+# clusters whose network plugin supports NetworkPolicy (kind's default does not).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: semantic-sql-api-ingress
+spec:
+  podSelector:
+    matchLabels: {app: semantic-sql, component: api}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: {}
+      ports:
+        - {port: 8000, protocol: TCP}

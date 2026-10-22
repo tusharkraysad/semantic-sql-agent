@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: semantic-sql-ui
+  labels: {app: semantic-sql, component: ui}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: semantic-sql, component: ui}
+  template:
+    metadata:
+      labels: {app: semantic-sql, component: ui}
+    spec:
+      securityContext: {runAsNonRoot: true, runAsUser: 10001}
+      containers:
+        - name: ui
+          image: semantic-sql-agent-ui:latest
+          ports: [{name: http, containerPort: 8501}]
+          env:
+            - {name: API_URL, value: "http://semantic-sql-api:8000"}
+          resources:
+            requests: {cpu: 100m, memory: 192Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+          readinessProbe:
+            httpGet: {path: /_stcore/health, port: http}
+            periodSeconds: 10

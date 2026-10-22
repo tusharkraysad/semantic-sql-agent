@@ -1,0 +1,23 @@
+# Local Airflow for the refresh DAG (standalone mode: scheduler + webserver + SQLite).
+# From the repo root:  docker compose -f airflow/docker-compose.yaml up --build
+# UI: http://localhost:8080  (the admin password is printed in the container logs)
+services:
+  airflow:
+    build: {context: .., dockerfile: airflow/Dockerfile}
+    command: standalone
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      SQLAGENT_PROJECT: /opt/project
+      SQLAGENT_API_URL: http://host.docker.internal:8000
+      DATA_DIR: /opt/project/data
+      ARTIFACT_DIR: /opt/project/artifacts
+      STATE_DIR: /opt/project/state
+      SEMANTIC_OVERRIDES: /opt/project/config/semantic_overrides.yaml
+      MLFLOW_TRACKING_URI: sqlite:////opt/project/mlflow.db
+      RUN_MODE: local
+      PYTHONPATH: /opt/project/src
+    volumes:
+      - ../:/opt/project
+      - ./dags:/opt/airflow/dags
+    ports: ["8080:8080"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
